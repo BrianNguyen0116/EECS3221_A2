@@ -1,1 +1,1 @@
-# EECS3221_A2
+# Assignment 2
