@@ -1,0 +1,172 @@
+/****************************************** START OF: Test_output casses for 3.1 & 3.2 **********************************************/
+
+// Start_Alarm request works as intended
+// however, the alarm expiration time needs to be adjusted to display the actual time it expired
+Alarm> Start_Alarm(40): 5 test test
+Alarm(40) Inserted by Main Thread(1868363584)Into Alarm List at 1677866247: 5 test test
+Alarm> (5) test test 
+Alarm(40): Alarm Expired at 0.000000: Alarm Removed From Alarm List
+req_type is: Start_Alarm
+alarm_id: 40
+alarm seconds: 5
+alarm message: test test
+
+// trying <up-arrow> key as an input to see what the output gaves
+// and to see if the program accepts it
+^[[A
+Bad command
+Bad command
+free(): double free detected in tcache 2
+Abort (core dumped)
+
+// Main thread is negative. Will change the output to produce unsigned number
+Alarm> Start_Alarm(5): 4 testing output, time expiration
+Alarm(5) Inserted by Main Thread(-1601853632) Into Alarm List at 1677867926: 4 testing output, time expiration
+Alarm> Alarm(5): Alarm Expired at 1677867930: Alarm Removed From Alarm List
+req_type is: Start_Alarm
+alarm_id: 5
+alarm seconds: 4
+alarm message: testing output, time expiration
+
+//
+Alarm> Start_Alarm(6): 3 testing main thread number and output when inserting new alarm
+Alarm(6) Inserted by Main Thread(757774144) Into Alarm List at 1677868136: 3 testing main thread number and output when inserting new alarm
+Alarm> Alarm(6): Alarm Expired at 1677868139: Alarm Removed From Alarm List
+req_type is: Start_Alarm
+alarm_id: 6
+alarm seconds: 3
+alarm message: testing main thread number and output when inserting new alarm
+
+// testing bad input for Change_Alarm request
+Alarm> Change_Alarm(40): 5 change test
+Bad command
+
+// bad commands should not be adding alarm to List
+Alarm> Start_Alarm(4): 3 start
+Alarm(4) Inserted by Main Thread(325187392) Into Alarm List at 1677877715: 3 start
+Alarm> Alarm(4): Alarm Expired at 1677877718: Alarm Removed From Alarm List
+req_type is: Start_Alarm
+alarm_id: 4
+alarm seconds: 3
+alarm message: start
+
+Alarm> Start_Alarm($): 3 invalid request
+Bad command
+Alarm(0) Inserted by Main Thread(325187392) Into Alarm List at 1677877733: 6995984
+
+// fixed issue regarding adding an alarm if id is not valid
+Alarm> Start_Alarm($): 3 not the right i
+Bad command
+
+// some more Start_Alarm testing -- adding multiple alarms
+Start_alarm(20): 5 run
+Bad command
+alarm> Start_Alarm(1): 15 run
+Alarm(1) Inserted by Main Thread(3966891840) Into Alarm List at 1677885816: 15 run
+alarm> Start_Alarm(2): 10 run
+Alarm(2) Inserted by Main Thread(3966891840) Into Alarm List at 1677885822: 10 run
+alarm> Start_Alarm(3): 5 run
+Alarm(3) Inserted by Main Thread(3966891840) Into Alarm List at 1677885828: 5 run
+alarm> Alarm(1): Alarm Expired at 1677885831: Alarm Removed From Alarm List
+req_type is: Start_Alarm
+alarm_id: 1
+alarm seconds: 15
+alarm message: run
+Alarm(2): Alarm Expired at 1677885832: Alarm Removed From Alarm List
+req_type is: Start_Alarm
+alarm_id: 2
+alarm seconds: 10
+alarm message: run
+Alarm(3): Alarm Expired at 1677885833: Alarm Removed From Alarm List
+req_type is: Start_Alarm
+alarm_id: 3
+alarm seconds: 5
+alarm message: run
+
+
+// change_alarm testing -- not finished yet
+alarm> change_alarm(20): 20 her there
+Bad command
+alarm> Change_Alarm(20): 20 over there
+Good command :)
+Bad command, ID not found
+
+// Change_Alarm -- trying to change an existing alarm
+Start_Alarm(1): 30 start
+Alarm(1) Inserted by Main Thread(1779447616) Into Alarm List at 1677887054: 30 start
+alarm> Change_Alarm(1): 45 changed
+Good Change_Alarm command :)
+Bad command, ID not found
+0tempID: 0
+alarm id: 37436748
+alarm> Alarm(1): Alarm Expired at 1677887085: Alarm Removed From Alarm List
+req_type is: Start_Alarm
+alarm_id: 1
+alarm seconds: 30
+alarm message: start
+
+// change_alarm test --> testing for change_alarm to change the alarm elements
+// command executed but no changes were made
+alarm> Start_Alarm(1): 60 start
+Alarm(1) Inserted by Main Thread(319379264) Into Alarm List at 1678031151: 60 start
+alarm> Start_Alarm(2): 80 start2
+Alarm(2) Inserted by Main Thread(319379264) Into Alarm List at 1678031165: 80 start2
+alarm> Start_Alarm(3): 100 start3
+Alarm(3) Inserted by Main Thread(319379264) Into Alarm List at 1678031175: 100 start3
+alarm> Changed_Alarm(3): 120 change
+Bad command
+alarm> Change_Alarm(3): 120 change
+Good start of Change_Alarm command :)
+id found
+Alarm(3) Changed at 1678031196: 120 change&alarm->id: 21339852
+alarm->id: 3
+&tid: 2027791636
+tid: 3
+alarm> Alarm(1): Alarm Expired at 1678031211: Alarm Removed From Alarm List
+req_type is: Start_Alarm
+alarm_id: 1
+alarm seconds: 60
+alarm message: start
+Alarm(2): Alarm Expired at 1678031245: Alarm Removed From Alarm List
+req_type is: Start_Alarm
+alarm_id: 2
+alarm seconds: 80
+alarm message: start2
+Alarm(3): Alarm Expired at 1678031275: Alarm Removed From Alarm List
+req_type is: Start_Alarm
+alarm_id: 3
+alarm seconds: 100
+alarm message: start3
+
+// // change_alarm test --> testing for change_alarm to change the alarm elements
+// command executed and expected changes were made
+alarm> Start_Alarm(1): 60 start
+Alarm(1) Inserted by Main Thread(1597773632) Into Alarm List at 1678032736: 60 start
+alarm> Start_Alarm(2): 80 start 2
+Alarm(2) Inserted by Main Thread(1597773632) Into Alarm List at 1678032748: 80 start 2
+alarm> Start_Alarm(3): 100 start 3
+Alarm(3) Inserted by Main Thread(1597773632) Into Alarm List at 1678032761: 100 start 3
+alarm> Change_Alarm(3): 120 start changed 3
+ID found
+Alarm(3) Changed at 1678032772: 120 start changed 3
+&alarm->id: 31858380
+alarm->id: 3
+&tid: -303897852
+tid: 3
+alarm> Alarm(1): Alarm Expired at 1678032796: Alarm Removed From Alarm List
+req_type is: Start_Alarm
+alarm_id: 1
+alarm seconds: 60
+alarm message: start
+Alarm(2): Alarm Expired at 1678032828: Alarm Removed From Alarm List
+req_type is: Start_Alarm
+alarm_id: 2
+alarm seconds: 80
+alarm message: start 2
+Alarm(3): Alarm Expired at 1678032892: Alarm Removed From Alarm List
+req_type is: Change_Alarm
+alarm_id: 3
+alarm seconds: 120
+alarm message: start changed 3
+
+/****************************************** END OF: Test_output casses for 3.1 & 3.2 *************************************************/
