@@ -26,9 +26,15 @@ typedef struct alarm_tag {
     char                message[128];
     char                req_type[20];   // for the type of request
     int                 alarm_id;       // alarm id
+    int			changed;	// boolean for change
 } alarm_t;
 
 pthread_mutex_t alarm_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// Condition checks for display thread(s) and when they run.
+pthread_cond_t d_cond = PTHREAD_MUTEX_INITIALIZER;
+
+// Alarm list
 alarm_t *alarm_list = NULL;
 
 /*
@@ -106,6 +112,47 @@ void *alarm_thread (void *arg)
     }
 }
 
+void *display_thread(void *arg)
+{
+	int status;
+	alarm_t *alarm;
+	
+	/*
+	* Loop forever, processing commands. The alarm thread will
+	* be disintegrated when the process exits. (From alarm_mutex.c) Similar to alarm_thread.
+	*/
+	while(1)
+	{
+	status = pthread_mutex_lock(alarm_mutex);
+	if (status != 0)
+		err_abort(status, "Lock mutex");
+
+	// Thread proceeds once a signal has been raised from the alarm thread.
+	status = pthread_cond_wait(&d_cond, &alarm_mutex);
+	if (status != 0)
+		err_abort(status, "Wait on cond");
+
+
+	// Display message loop which lasts until expiration
+	// If-else clause to check if an alarm in order to print something else.
+	while(alarm->time > time (NULL))
+	{
+	if (alarm->Changed == 0) {
+		printf(alarm->message);
+		sleep(5);
+	} else {
+		printf("Display Thread (%d) Has Started to Print Changed Message at %d: %s", alarm->alarm_id, , alarm->message);
+		alarm->Changed = 0;
+		sleep(5);	
+	}
+	printf("Alarm (%d) Expired; Display Thread (%d) Stopped Printing Alarm Message at %d: %s.", alarm->alarm_id, , time(NULL), alarm->message);
+	if (status != 0)
+		err_abort(status, "Unlock mutex");
+	free(alarm);
+	}
+
+}
+
 int main (int argc, char *argv[])
 {
     int status;
@@ -168,6 +215,7 @@ int main (int argc, char *argv[])
                     alarm->alarm_id = tid;
                     memcpy(next->req_type, treq, sizeof next->req_type);
                     memcpy(next->message, tmessage, sizeof next->message);
+		    next->changed = 1;
 
                     printf("Alarm(%d) Changed at %d: %d %s\n", next->alarm_id, time(NULL), next->seconds, next->message);
 
@@ -211,6 +259,7 @@ int main (int argc, char *argv[])
             alarm->alarm_id = tid;
             memcpy(alarm->req_type, treq, sizeof alarm->req_type);
             memcpy(alarm->message, tmessage, sizeof alarm->message);
+	    alarm->changed = 0;
 
             /*
              * Insert the new alarm into the list of alarms,
