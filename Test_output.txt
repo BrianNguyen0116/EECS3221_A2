@@ -168,5 +168,66 @@ req_type is: Change_Alarm
 alarm_id: 3
 alarm seconds: 120
 alarm message: start changed 3
-
-/****************************************** END OF: Test_output casses for 3.1 & 3.2 *************************************************/
+/************************************ Ethan Testing ************************************************/
+/***************************** CHANGE ALARM ERRORS PART 1 ******************************************/
+/************************* On First Run/Compile (fresh terminal) ***********************************/
+Start_Alarm(123): 20 This message // First alarm in list id: 123
+alarm> Alarm(123) Inserted by Main Thread(2) Into Alarm List at 1678372467: 20 This message
+alarm>Start_Alarm(125): 20 This message // Second alarm in list id: 125
+ Alarm(125) Inserted by Main Thread(2) Into Alarm List at 1678372471: 20 This message
+alarm>Change_Alarm(125): 20 New message // Change the Second alarm with id: 125
+ ID found
+Alarm(125) Changed at 1678372477: 20 New message
+&alarm->id: 823812924
+alarm->id: 125
+&tid: -734004380
+tid: 125
+alarm>Change_Alarm(123): 20 New message // Change the First alarm with id: 125
+Bad command, Alarm ID not found // Error: Doest not find the First alarm in the list
+ alarm id: 0
+tid: 123
+&alarm->id: 823813116
+alarm->id: 0
+&tid: -734004380
+tid: 123
+alarm> Alarm(123): Alarm Expired at 1678372487: Alarm Removed From Alarm List
+req_type is: Start_Alarm
+alarm_id: 123
+alarm seconds: 20
+alarm message: This message
+Alarm(125): Alarm Expired at 1678372497: Alarm Removed From Alarm List
+req_type is: Change_Alarm
+alarm_id: 125
+alarm seconds: 20
+alarm message: New message
+/******************************* CHANGE ALARM ERRORS PART 2 **************************************/
+/************ Right after all the above Alarm calls (While the program is still running)**********/
+Start_Alarm(123): 20 This message
+alarm> Alarm(123) Inserted by Main Thread(2) Into Alarm List at 1678372707: 20 This message
+alarm>Change_Alarm(123): 20 New message
+ alarm id: 125 //Error: Points to an expired alarm_id
+tid: 123
+&alarm->id: 823811916
+alarm->id: 125
+&tid: -734004380
+tid: 123
+alarm>Bad command, Alarm ID not found
+/********************************* CHANGE ALARM ERRORS PART 3 ************************************/
+/**************************** On New first Run/Compile (fresh terminal) **************************/
+alarm>Start_Alarm(123): 20 This message // First alarm in list id: 123
+ Alarm(123) Inserted by Main Thread(2) Into Alarm List at 1678373250: 20 This message
+alarm>Change_Alarm(123): 20 New message // Error: Does not see first alarm in list
+ alarm id: 0
+tid: 123
+&alarm->id: -932880564
+alarm->id: 0
+&tid: 478148212
+tid: 123
+alarm>Bad command, Alarm ID not found
+ Alarm(123): Alarm Expired at 1678373270: Alarm Removed From Alarm List
+req_type is: Start_Alarm
+alarm_id: 123
+alarm seconds: 20
+alarm message: This message
+/****************************************** END OF: ETHAN TESTS for cases 3.1 & 3.2 *************************************************/
+/****************************************** END OF: Test_output cases for 3.1 & 3.2 *************************************************/
