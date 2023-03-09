@@ -5,7 +5,7 @@ Have in git:
 (3.2.2 & 3.2.3): Two Erros/Issues
  - Error 1: When there is only one alarm in the List Change_Alarm does not find its id
  - Error 2: After a consecutive amout of requests if Change_alarm is called and the last alarm hase expired alarm_id points to the
-   expired alam_id 
+   expired alam_id. (See detials in Test_output CHANGE ALARM ERRORS PART 1, PART 2 & PART 3)
  - Replacing messaged if alarm_id is found works well
 3.4.1 - Not tested
 3.4.2 - Not tested
