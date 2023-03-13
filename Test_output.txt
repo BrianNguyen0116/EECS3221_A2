@@ -229,5 +229,35 @@ req_type is: Start_Alarm
 alarm_id: 123
 alarm seconds: 20
 alarm message: This message
+
+// Looking at pointer addreses for debugging
+// 1st round
+alarm>Start_Alarm(123): 20 This message
+ Status of mutex lock: 0
+Alarm(123) Inserted by Main Thread(2) Into Alarm List at 1678728965: 20 This message
+alarm> Alarm at (1861058624) with id (123)
+New Display Thread (123) Created at 20
+Change_Alarm(123): 20 New message
+Alarm at (1861058624) with id (-1799722751)
+
+// 2nd round
+alarm>Start_Alarm(123): 20 This message
+ Status of mutex lock: 0
+Alarm(123) Inserted by Main Thread(2) Into Alarm List at 1678729478: 20 This message
+alarm> Alarm at (-305037248) with id at (671750540) and id (123)
+New Display Thread (123) Created at 20
+Change_Alarm(123): 20 New message
+Alarm at (-305037248) with id at (172)
+alarm>
+
+// 3rd round address of &*last points to last struct instead of address of alarm_id
+alarm>Start_Alarm(123): 20 This message
+ Status of mutex lock: 0
+Alarm(123) Inserted by Main Thread(2) Into Alarm List at 1678729689: 20 This message
+alarm> Alarm at (-1003323328) with id at (-1381885556) and id (123)
+New Display Thread (123) Created at 20
+Change_Alarm(123): 20 New message
+Alarm at (-1003323328) with id at (-1003323328)
+alarm>
 /****************************************** END OF: ETHAN TESTS for cases 3.1 & 3.2 *************************************************/
 /****************************************** END OF: Test_output cases for 3.1 & 3.2 *************************************************/

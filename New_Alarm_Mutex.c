@@ -95,8 +95,8 @@ void *display_thread(void *arg) {
 void *alarm_thread (void *arg)
 {
     time_t now;
-    alarm_t *alarm;
-    display_t *display, **last, *next;
+    alarm_t *alarm, **last, *next;
+    display_t *display;
     pthread_t thread;
 
     int status;
@@ -145,12 +145,12 @@ void *alarm_thread (void *arg)
                 if (status != 0)
                     err_abort(status, "Create display thread");
 
-                display_t *new_display = malloc(sizeof(display_t));
-                new_display->link = NULL;
-                new_display->thread_id = alarm->alarm_id;
-                new_display->creation_time = time(NULL);
+                display = (display_t*)malloc (sizeof (display_t));
+                display->link = NULL;
+                display->thread_id = alarm->alarm_id;
+                display->creation_time = alarm->seconds;
 
-                printf("New Display Thread (%d) Created at %d \n", alarm->alarm_id, alarm->seconds);
+                printf("New Display Thread (%d) Created at %d \n", display->thread_id, display->creation_time);
             }else{
                 display_list = display->link;
                 //printf("New Display Thread (%d) Created at %d", alarm->alarm_id, alarm->time);
@@ -186,10 +186,11 @@ void *alarm_thread (void *arg)
          */
         if (alarm != NULL) {
             printf ("Alarm(%d): Alarm Expired at %d: Alarm Removed From Alarm List\n", alarm->alarm_id, time(NULL));
-            printf ("req_type is: %s\n", alarm->req_type);
-            printf("alarm_id: %d\n", alarm->alarm_id);
-            printf("alarm seconds: %d\n", alarm->seconds);
-            printf("alarm message: %s\n", alarm->message);
+            // Testing and Debugging
+            //printf ("req_type is: %s\n", alarm->req_type);
+            //printf("alarm_id: %d\n", alarm->alarm_id);
+            //printf("alarm seconds: %d\n", alarm->seconds);
+            //printf("alarm message: %s\n", alarm->message);
             free (alarm);
         }
     }
@@ -216,109 +217,39 @@ int main (int argc, char *argv[])
         printf ("alarm> ");
         if (fgets (line, sizeof (line), stdin) == NULL) exit (0);
         if (strlen (line) <= 1) continue;
-        alarm = (alarm_t*)malloc (sizeof (alarm_t));
-        if (alarm == NULL)
-            errno_abort ("Allocate alarm");
 
         /*
          * Parse input line into alarm request (%20[^(]), alarm id (&d),
          * seconds (%d), and a message (%128[^\n]),
          * consisting of up to 128 characters.
          */
-        // if (sscanf (line, "%20[^(](%d): %d %128[^\n]", alarm->req_type, &alarm->alarm_id,
-        //     &alarm->seconds, alarm->message) < 4)
-        if (sscanf (line, "%20[^(](%d): %d %128[^\n]", treq, &tid, &tsec, tmessage) < 4)
-        {
+
+        if (sscanf (line, "%20[^(](%d): %d %128[^\n]", treq, &tid, &tsec, tmessage) < 4) {
             fprintf (stderr, "Bad command\n");
-            free (alarm);
-        }
-        else if (strcmp(treq, "Change_Alarm") == 0)
-        {
-            // fprintf (stderr, "Good start of Change_Alarm command :)\n");
-            status = pthread_mutex_lock (&alarm_mutex);
-            if (status != 0)
-                err_abort (status, "Lock mutex");
-            /*
-                Make change to existing alarm
-                Alarm must with id "alarm_id" must exist to be able to make changes
-            */
-            int exist = 0;
-            last = &alarm_list;
-            next = *last;
-            while (next != NULL)
-            {
-                if (tid == next->alarm_id)
-                {
-                    exist = 1;
 
-                    printf("ID found\n");
+        } else if (strcmp(treq, "Start_Alarm") == 0) { // Start_Alarm request
 
-                    next->seconds = tsec;
-                    next->time = time (NULL) + next->seconds;
-                    alarm->alarm_id = tid;
-                    memcpy(next->req_type, treq, sizeof next->req_type);
-                    memcpy(next->message, tmessage, sizeof next->message);
-
-                    printf("Alarm(%d) Changed at %d: %d %s\n", next->alarm_id, time(NULL), next->seconds, next->message);
-
-                    break;
-                }
-                last = &next->link;
-                next = next->link;
-            }
-            // if reach end of list and alarm_id does not match then request not valid
-            if (exist == 0)
-            {
-                fprintf (stderr, "Bad command, Alarm ID not found\n");
-                printf("alarm id: %d\n", alarm->alarm_id);
-                printf("tid: %d\n", tid);
-                free (alarm);
-            }
-            // debudding statements
-            // printf("&alarm->id: %d\n", &alarm->alarm_id);
-            // printf("alarm->id: %d\n", alarm->alarm_id);
-            // printf("&tid: %d\n", &tid);
-            // printf("tid: %d\n", tid);
-#ifdef DEBUG
-            printf ("[list: ");
-            for (next = alarm_list; next != NULL; next = next->link)
-                printf ("%d(%d)[\"%s\"] ", next->time,
-                    next->time - time (NULL), next->message);
-            printf ("]\n");
-#endif
-            status = pthread_mutex_unlock (&alarm_mutex);
-            if (status != 0)
-                err_abort (status, "Unlock mutex");
-        }
-        else if (strcmp(treq, "Start_Alarm") == 0)    // Start_Alarm request
-        {
             status = pthread_mutex_lock (&alarm_mutex);
             printf("Status of mutex lock: %d \n", status);
             if (status != 0)
                 err_abort (status, "Lock mutex");
+            //Allocate memory for a new alarm
+            alarm = (alarm_t*)malloc (sizeof (alarm_t));
+            if (alarm == NULL)
+                errno_abort ("Allocate alarm");
             // Assign temp variables to the new alarm
             alarm->seconds = tsec;
             alarm->time = time (NULL) + alarm->seconds;
             alarm->alarm_id = tid;
             memcpy(alarm->req_type, treq, sizeof alarm->req_type);
             memcpy(alarm->message, tmessage, sizeof alarm->message);
-
             /*
              * Insert the new alarm into the list of alarms,
              * sorted by alarm id.
              */
             last = &alarm_list;
             next = *last;
-            /*
-             * some statements for debugging and
-             * checking for pointer values and addresses
-            */
-            // printf("alarm: %p \n", alarm);
-            // printf("*alarm: %p \n", *alarm);
-            // printf("alarm->link: %p \n", alarm->link);
-            // printf("alarm id: %d \n", alarm->alarm_id);
-            // printf("next: %p \n", next);
-            // printf("next != NULL: %d \n", (next!=NULL));
+
             while (next != NULL) {
                 if (next->alarm_id >= alarm->alarm_id) {
                     alarm->link = next;
@@ -338,7 +269,6 @@ int main (int argc, char *argv[])
                 *last = alarm; // next = alarm
                 alarm->link = NULL;
             }
-
             // Print out message that new alarm was added
             printf("Alarm(%d) Inserted by Main Thread(%u) ", alarm->alarm_id, pthread_self());
             printf("Into Alarm List at %d: %d %s\n", time(NULL), alarm->seconds, alarm->message);
@@ -351,15 +281,75 @@ int main (int argc, char *argv[])
             status = pthread_mutex_unlock (&alarm_mutex);
             if (status != 0)
                 err_abort (status, "Unlock mutex");
+
+        } else if (strcmp(treq, "Change_Alarm") == 0) {
+
+            status = pthread_mutex_lock (&alarm_mutex);
+            if (status != 0)
+                err_abort (status, "Lock mutex");
+
+            last = &alarm_list;
+            next = *last;
+            int exist = 0;
+
+            while (next != NULL)
+            {
+                if (tid == next->alarm_id)
+                {
+                    exist = 1;
+
+                    printf("ID found\n");
+
+                    next->seconds = tsec;
+                    next->time = time (NULL) + next->seconds;
+                    alarm->alarm_id = tid;
+                    memcpy(next->req_type, treq, sizeof next->req_type);
+                    memcpy(next->message, tmessage, sizeof next->message);
+
+                    printf("Alarm(%d) Changed at %d: %d %s\n", next->alarm_id, time(NULL), next->seconds, next->message);
+
+                    break;
+                }else{
+                    // Testing and Debugging
+                    printf("List of ids: %d\n", next->alarm_id);
+                }
+                last = &next->link;
+                next = next->link;
+            }
+
+            // if reach end of list and alarm_id does not match then request not valid
+            if (exist == 0)
+            {
+                fprintf (stderr, "Bad command, Alarm ID not found\n");
+                printf("tid: %d\n", tid);
+                free (alarm);
+            }
+
+#ifdef DEBUG
+            printf ("[list: ");
+            for (next = alarm_list; next != NULL; next = next->link)
+                printf ("%d(%d)[\"%s\"] ", next->time,
+                    next->time - time (NULL), next->message);
+            printf ("]\n");
+#endif
+            status = pthread_mutex_unlock (&alarm_mutex);
+            if (status != 0)
+                err_abort (status, "Unlock mutex");
+
         } else {
             fprintf (stderr, "Bad command, invalid Alarm Request\n");
             free (alarm);
         }
+
     }
+
 }
+
+// Testing and Debugging
 /*
 Start_Alarm(123): 20 This message
 Start_Alarm(125): 20 This message
+Start_Alarm(128): 20 This message
 Change_Alarm(123): 20 New message
 Change_Alarm(125): 20 New message
 
