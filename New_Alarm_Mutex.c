@@ -21,12 +21,14 @@
  */
 typedef struct alarm_tag {
     struct alarm_tag    *link;
-    int                 seconds;
     time_t              time;           // seconds from EPOCH
+    int                 seconds;
+    int			        changed;        // boolean for change
+    int                 alarm_id;       // alarm id
     char                message[128];
     char                req_type[20];   // for the type of request
-    int                 alarm_id;       // alarm id
-    int			        changed;        // boolean for change
+
+
 } alarm_t;
 
 typedef struct display_tag {
@@ -88,6 +90,8 @@ void *display_thread(void *arg) {
 
     }
 }
+alarm_t **globalLast;
+alarm_t *globalNext;
 
 /*
  * The alarm thread's start routine.
@@ -95,7 +99,7 @@ void *display_thread(void *arg) {
 void *alarm_thread (void *arg)
 {
     time_t now;
-    alarm_t *alarm, **last, *next;
+    alarm_t *alarm;
     display_t *display;
     pthread_t thread;
 
@@ -125,6 +129,8 @@ void *alarm_thread (void *arg)
         if (alarm == NULL)
             sleep_time = 1;
         else {
+            globalLast = &alarm_list;
+            globalNext = *globalLast;
             alarm_list = alarm->link;
             now = time(NULL);
             if (alarm->time <= now)
@@ -180,22 +186,21 @@ void *alarm_thread (void *arg)
             sched_yield ();
 
         /*
-         * If a timer expired, print the time of expriation, req_type,
+         * If a timer expired, print the time of expiration, req_type,
          * alarm_id, alarm seconds & the message as well as and free the
          * alarm structure.
          */
         if (alarm != NULL) {
             printf ("Alarm(%d): Alarm Expired at %d: Alarm Removed From Alarm List\n", alarm->alarm_id, time(NULL));
             // Testing and Debugging
-            //printf ("req_type is: %s\n", alarm->req_type);
-            //printf("alarm_id: %d\n", alarm->alarm_id);
-            //printf("alarm seconds: %d\n", alarm->seconds);
-            //printf("alarm message: %s\n", alarm->message);
+            printf ("req_type is: %s\n", alarm->req_type);
+            printf("alarm_id: %d\n", alarm->alarm_id);
+            printf("alarm seconds: %d\n", alarm->seconds);
+            printf("alarm message: %s\n", alarm->message);
             free (alarm);
         }
     }
 }
-
 
 int main (int argc, char *argv[])
 {
@@ -266,7 +271,7 @@ int main (int argc, char *argv[])
              * list header).
              */
             if (next == NULL) {
-                *last = alarm; // next = alarm
+                *last = alarm;
                 alarm->link = NULL;
             }
             // Print out message that new alarm was added
@@ -288,41 +293,37 @@ int main (int argc, char *argv[])
             if (status != 0)
                 err_abort (status, "Lock mutex");
 
-            last = &alarm_list;
-            next = *last;
             int exist = 0;
 
-            while (next != NULL)
+            while (globalNext != NULL)
             {
-                if (tid == next->alarm_id)
+                if (tid == globalNext->alarm_id)
                 {
                     exist = 1;
 
                     printf("ID found\n");
 
-                    next->seconds = tsec;
-                    next->time = time (NULL) + next->seconds;
-                    alarm->alarm_id = tid;
-                    memcpy(next->req_type, treq, sizeof next->req_type);
-                    memcpy(next->message, tmessage, sizeof next->message);
+                    globalNext->seconds = tsec;
+                    globalNext->time = time (NULL) + globalNext->seconds;
+                    memcpy(globalNext->req_type, treq, sizeof globalNext->req_type);
+                    memcpy(globalNext->message, tmessage, sizeof globalNext->message);
 
-                    printf("Alarm(%d) Changed at %d: %d %s\n", next->alarm_id, time(NULL), next->seconds, next->message);
+                    printf("Alarm(%d) Changed at %d: %d %s\n", globalNext->alarm_id, time(NULL), globalNext->seconds, globalNext->message);
 
                     break;
                 }else{
                     // Testing and Debugging
-                    printf("List of ids: %d\n", next->alarm_id);
+                    printf("List of ids: %d\n", globalNext->alarm_id);
                 }
-                last = &next->link;
-                next = next->link;
+                globalLast = &globalNext->link;
+                globalNext = globalNext->link;
             }
+
 
             // if reach end of list and alarm_id does not match then request not valid
             if (exist == 0)
             {
-                fprintf (stderr, "Bad command, Alarm ID not found\n");
-                printf("tid: %d\n", tid);
-                free (alarm);
+                fprintf (stderr, "Bad command, Alarm ID (%d) not found\n", tid );
             }
 
 #ifdef DEBUG
@@ -347,11 +348,10 @@ int main (int argc, char *argv[])
 
 // Testing and Debugging
 /*
-Start_Alarm(123): 20 This message
+Start_Alarm(123): 1 This message
 Start_Alarm(125): 20 This message
 Start_Alarm(128): 20 This message
 Change_Alarm(123): 20 New message
 Change_Alarm(125): 20 New message
-
 Start_Alarm(123): 1 This message
  */
