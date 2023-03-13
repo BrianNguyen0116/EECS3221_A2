@@ -1,5 +1,4 @@
-/****************************************** START OF: Test_output casses for 3.1 & 3.2 **********************************************/
-
+/****************************************** START OF: Test_output cases for 3.1 & 3.2 **********************************************/
 // Start_Alarm request works as intended
 // however, the alarm expiration time needs to be adjusted to display the actual time it expired
 Alarm> Start_Alarm(40): 5 test test
@@ -168,6 +167,7 @@ req_type is: Change_Alarm
 alarm_id: 3
 alarm seconds: 120
 alarm message: start changed 3
+
 /************************************ Ethan Testing ************************************************/
 /***************************** CHANGE ALARM ERRORS PART 1 ******************************************/
 /************************* On First Run/Compile (fresh terminal) ***********************************/
@@ -230,7 +230,7 @@ alarm_id: 123
 alarm seconds: 20
 alarm message: This message
 
-// Looking at pointer addreses for debugging
+// Looking at pointer addresses for debugging
 // 1st round
 alarm>Start_Alarm(123): 20 This message
  Status of mutex lock: 0
@@ -259,5 +259,7 @@ New Display Thread (123) Created at 20
 Change_Alarm(123): 20 New message
 Alarm at (-1003323328) with id at (-1003323328)
 alarm>
-/****************************************** END OF: ETHAN TESTS for cases 3.1 & 3.2 *************************************************/
-/****************************************** END OF: Test_output cases for 3.1 & 3.2 *************************************************/
+/******************************* END OF: ETHAN TESTS for cases 3.1 & 3.2 **************************************/
+/******************************* END OF: Test_output cases for 3.1 & 3.2 **************************************/
+
+/************************************* START OF: Test_output cases for 3.3 ************************************/
