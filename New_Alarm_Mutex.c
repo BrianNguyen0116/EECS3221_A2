@@ -22,95 +22,31 @@
 typedef struct alarm_tag {
     struct alarm_tag    *link;
     int                 seconds;
-    time_t              time;           /* seconds from EPOCH */
+    time_t              time;           // seconds from EPOCH
     char                message[128];
     char                req_type[20];   // for the type of request
     int                 alarm_id;       // alarm id
-    int			        changed;	// boolean for change
+    int			        changed;        // boolean for change
 } alarm_t;
 
-pthread_mutex_t alarm_mutex = PTHREAD_MUTEX_INITIALIZER;
+typedef struct display_tag {
+    struct display_tag    *link;
+    int   thread_id;                    // same as alarm_id
+    int   creation_time;                // Creation time of display thread
+} display_t;
 
+pthread_mutex_t alarm_mutex = PTHREAD_MUTEX_INITIALIZER;
 // Condition checks for display thread(s) and when they run.
 pthread_cond_t d_cond = PTHREAD_MUTEX_INITIALIZER;
 
 // Alarm list
 alarm_t *alarm_list = NULL;
+// Display list
+display_t *display_list = NULL;
 
 /*
- * The alarm thread's start routine.
+ * The display thread's start routine.
  */
-void *alarm_thread (void *arg)
-{
-    alarm_t *alarm;
-    int sleep_time;
-    time_t now;
-    int status;
-
-    /*
-     * Loop forever, processing commands. The alarm thread will
-     * be disintegrated when the process exits. (From alarm_mutex.c)
-     */
-    while (1) {
-        status = pthread_mutex_lock (&alarm_mutex);
-        if (status != 0)
-            err_abort (status, "Lock mutex");
-        alarm = alarm_list;
-
-        /*
-         * If the alarm list is empty, wait for one second. This
-         * allows the main thread to run, and read another
-         * command. If the list is not empty, remove the first
-         * item. Compute the number of seconds to wait -- if the
-         * result is less than 0 (the time has passed), then set
-         * the sleep_time to 0. (From alarm_mutex.c)
-         */
-        if (alarm == NULL)
-            sleep_time = 1;
-        else {
-            alarm_list = alarm->link;
-            now = time (NULL);
-            if (alarm->time <= now)
-                sleep_time = 0;
-            else
-                sleep_time = alarm->time - now;
-#ifdef DEBUG
-            printf ("[waiting: %d(%d)\"%s\"]\n", alarm->time,
-                sleep_time, alarm->message);
-#endif
-        }
-
-        /*
-         * Unlock the mutex before waiting, so that the main
-         * thread can lock it to insert a new alarm request. If
-         * the sleep_time is 0, then call sched_yield, giving
-         * the main thread a chance to run if it has been
-         * readied by user input, without delaying the message
-         * if there's no input. (From alarm_mutex.c)
-         */
-        status = pthread_mutex_unlock (&alarm_mutex);
-        if (status != 0)
-            err_abort (status, "Unlock mutex");
-        if (sleep_time > 0)
-            sleep (sleep_time);
-        else
-            sched_yield ();
-
-        /*
-         * If a timer expired, print the time of expriation, req_type,
-         * alarm_id, alarm seconds & the message as well as and free the
-         * alarm structure.
-         */
-        if (alarm != NULL) {
-            printf ("Alarm(%d): Alarm Expired at %d: Alarm Removed From Alarm List\n", alarm->alarm_id, time(NULL));
-            printf ("req_type is: %s\n", alarm->req_type);
-            printf("alarm_id: %d\n", alarm->alarm_id);
-            printf("alarm seconds: %d\n", alarm->seconds);
-            printf("alarm message: %s\n", alarm->message);
-            free (alarm);
-        }
-    }
-}
 
 void *display_thread(void *arg) {
     int status;
@@ -153,6 +89,113 @@ void *display_thread(void *arg) {
     }
 }
 
+/*
+ * The alarm thread's start routine.
+ */
+void *alarm_thread (void *arg)
+{
+    time_t now;
+    alarm_t *alarm;
+    display_t *display, **last, *next;
+    pthread_t thread;
+
+    int status;
+    int sleep_time;
+
+    /*
+     * Loop forever, processing commands. The alarm thread will
+     * be disintegrated when the process exits. (From alarm_mutex.c)
+     */
+    while (1) {
+        status = pthread_mutex_lock (&alarm_mutex);
+        if (status != 0)
+            err_abort (status, "Lock mutex");
+        alarm = alarm_list;
+        display = display_list;
+
+        /*
+         * If the alarm list is empty, wait for one second. This
+         * allows the main thread to run, and read another
+         * command. If the list is not empty, remove the first
+         * item. Compute the number of seconds to wait -- if the
+         * result is less than 0 (the time has passed), then set
+         * the sleep_time to 0. (From alarm_mutex.c)
+         */
+
+        if (alarm == NULL)
+            sleep_time = 1;
+        else {
+            alarm_list = alarm->link;
+            now = time(NULL);
+            if (alarm->time <= now)
+                sleep_time = 0;
+            else
+                sleep_time = alarm->time - now;
+
+            /* A.3.3.2
+             * Check if display list is empty, and create a new display thread
+             * if it is. Print the creation message and add the new display
+             * thread to the display list.
+             */
+
+            if (display == NULL){
+
+                status = pthread_create(
+                        &thread, NULL, display_thread, NULL);
+                if (status != 0)
+                    err_abort(status, "Create display thread");
+
+                display_t *new_display = malloc(sizeof(display_t));
+                new_display->link = NULL;
+                new_display->thread_id = alarm->alarm_id;
+                new_display->creation_time = time(NULL);
+
+                printf("New Display Thread (%d) Created at %d \n", alarm->alarm_id, alarm->seconds);
+            }else{
+                display_list = display->link;
+                //printf("New Display Thread (%d) Created at %d", alarm->alarm_id, alarm->time);
+            }
+
+
+#ifdef DEBUG
+            printf ("[waiting: %d(%d)\"%s\"]\n", alarm->time,
+                sleep_time, alarm->message);
+#endif
+        }
+
+        /*
+         * Unlock the mutex before waiting, so that the main
+         * thread can lock it to insert a new alarm request. If
+         * the sleep_time is 0, then call sched_yield, giving
+         * the main thread a chance to run if it has been
+         * readied by user input, without delaying the message
+         * if there's no input. (From alarm_mutex.c)
+         */
+        status = pthread_mutex_unlock (&alarm_mutex);
+        if (status != 0)
+            err_abort (status, "Unlock mutex");
+        if (sleep_time > 0)
+            sleep (sleep_time);
+        else
+            sched_yield ();
+
+        /*
+         * If a timer expired, print the time of expriation, req_type,
+         * alarm_id, alarm seconds & the message as well as and free the
+         * alarm structure.
+         */
+        if (alarm != NULL) {
+            printf ("Alarm(%d): Alarm Expired at %d: Alarm Removed From Alarm List\n", alarm->alarm_id, time(NULL));
+            printf ("req_type is: %s\n", alarm->req_type);
+            printf("alarm_id: %d\n", alarm->alarm_id);
+            printf("alarm seconds: %d\n", alarm->seconds);
+            printf("alarm message: %s\n", alarm->message);
+            free (alarm);
+        }
+    }
+}
+
+
 int main (int argc, char *argv[])
 {
     int status;
@@ -189,7 +232,6 @@ int main (int argc, char *argv[])
             fprintf (stderr, "Bad command\n");
             free (alarm);
         }
-        /******* Does not work if there is only one alarm in the system ******/
         else if (strcmp(treq, "Change_Alarm") == 0)
         {
             // fprintf (stderr, "Good start of Change_Alarm command :)\n");
@@ -202,7 +244,6 @@ int main (int argc, char *argv[])
             */
             int exist = 0;
             last = &alarm_list;
-
             next = *last;
             while (next != NULL)
             {
@@ -217,7 +258,6 @@ int main (int argc, char *argv[])
                     alarm->alarm_id = tid;
                     memcpy(next->req_type, treq, sizeof next->req_type);
                     memcpy(next->message, tmessage, sizeof next->message);
-		            next->changed = 1;
 
                     printf("Alarm(%d) Changed at %d: %d %s\n", next->alarm_id, time(NULL), next->seconds, next->message);
 
@@ -235,10 +275,10 @@ int main (int argc, char *argv[])
                 free (alarm);
             }
             // debudding statements
-            printf("&alarm->id: %d\n", &alarm->alarm_id);
-            printf("alarm->id: %d\n", alarm->alarm_id);
-            printf("&tid: %d\n", &tid);
-            printf("tid: %d\n", tid);
+            // printf("&alarm->id: %d\n", &alarm->alarm_id);
+            // printf("alarm->id: %d\n", alarm->alarm_id);
+            // printf("&tid: %d\n", &tid);
+            // printf("tid: %d\n", tid);
 #ifdef DEBUG
             printf ("[list: ");
             for (next = alarm_list; next != NULL; next = next->link)
@@ -253,6 +293,7 @@ int main (int argc, char *argv[])
         else if (strcmp(treq, "Start_Alarm") == 0)    // Start_Alarm request
         {
             status = pthread_mutex_lock (&alarm_mutex);
+            printf("Status of mutex lock: %d \n", status);
             if (status != 0)
                 err_abort (status, "Lock mutex");
             // Assign temp variables to the new alarm
@@ -261,14 +302,23 @@ int main (int argc, char *argv[])
             alarm->alarm_id = tid;
             memcpy(alarm->req_type, treq, sizeof alarm->req_type);
             memcpy(alarm->message, tmessage, sizeof alarm->message);
-	        alarm->changed = 0;
 
             /*
              * Insert the new alarm into the list of alarms,
-             * sorted by expiration time.
+             * sorted by alarm id.
              */
             last = &alarm_list;
             next = *last;
+            /*
+             * some statements for debugging and
+             * checking for pointer values and addresses
+            */
+            // printf("alarm: %p \n", alarm);
+            // printf("*alarm: %p \n", *alarm);
+            // printf("alarm->link: %p \n", alarm->link);
+            // printf("alarm id: %d \n", alarm->alarm_id);
+            // printf("next: %p \n", next);
+            // printf("next != NULL: %d \n", (next!=NULL));
             while (next != NULL) {
                 if (next->alarm_id >= alarm->alarm_id) {
                     alarm->link = next;
@@ -285,17 +335,17 @@ int main (int argc, char *argv[])
              * list header).
              */
             if (next == NULL) {
-                *last = alarm;
+                *last = alarm; // next = alarm
                 alarm->link = NULL;
             }
+
             // Print out message that new alarm was added
             printf("Alarm(%d) Inserted by Main Thread(%u) ", alarm->alarm_id, pthread_self());
             printf("Into Alarm List at %d: %d %s\n", time(NULL), alarm->seconds, alarm->message);
 #ifdef DEBUG
             printf ("[list: ");
             for (next = alarm_list; next != NULL; next = next->link)
-                printf ("%d(%d)[\"%s\"] ", next->time,
-                    next->time - time (NULL), next->message);
+                printf ("<%d>%d(%d)[\"%s\"] ", next->alarm_id, next->time, next->time - time (NULL), next->message);
             printf ("]\n");
 #endif
             status = pthread_mutex_unlock (&alarm_mutex);
@@ -312,4 +362,6 @@ Start_Alarm(123): 20 This message
 Start_Alarm(125): 20 This message
 Change_Alarm(123): 20 New message
 Change_Alarm(125): 20 New message
+
+Start_Alarm(123): 1 This message
  */

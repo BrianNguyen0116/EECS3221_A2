@@ -7,13 +7,13 @@ Have in git:
  - Error 2: After a consecutive amout of requests if Change_alarm is called and the last alarm hase expired alarm_id points to the
    expired alam_id. (See detials in Test_output CHANGE ALARM ERRORS PART 1, PART 2 & PART 3)
  - Replacing messaged if alarm_id is found works well
-3.4.1 - Not tested
-3.4.2 - Not tested
-3.4.4 - Not tested
+3.4.1 - Tested with dummy code
+3.4.2 - Tested with dummy code
+3.4.4 - Tested with dummy code
 
-What we don't have: 
-3.3.1
-3.3.2 - Huy has but it has not been added to the git (by Ethan) 
-3.3.3
-3.3.4 
+What we don't have:
+3.3.1 - Still need ASAP
+3.3.2 - Ethan has started to debug
+3.3.3 - Still need ASAP
+3.3.4 - Still need ASAP
 3.4.3
