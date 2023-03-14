@@ -42,7 +42,7 @@ typedef struct display_tag {
 
 pthread_mutex_t alarm_mutex = PTHREAD_MUTEX_INITIALIZER;
 // Condition checks for display thread(s) and when they run.
-pthread_cond_t d_cond = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t d_cond = PTHREAD_COND_INITIALIZER;
 // Alarm list initialization
 alarm_t *alarm_list = NULL;
 // Display list initialization
@@ -170,8 +170,10 @@ void *alarm_thread (void *arg)
                 }
 
                 printf("New Display Thread (%d) Created at %d \n", thread_id, display->creation_time);
+                thread_id++;
 
             } else {
+
                 alarm->changed = 1;
                 pthread_mutex_lock(&alarm_mutex);
                 pthread_cond_signal(&d_cond);
