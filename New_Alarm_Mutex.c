@@ -73,6 +73,7 @@ void *display_thread(void *arg) {
         if (status != 0)
             err_abort(status, "Wait on cond");
 
+        // 3.3.3
         // If there are no more alarms in the display thread, terminate the d. thread.
         if (alarm == NULL) {
             printf("Display Thread Terminated (%s) at %d", display->thread_id, time(NULL));
@@ -86,6 +87,7 @@ void *display_thread(void *arg) {
             */
 
             if (alarm->time <= time(NULL)) {
+                // 3.3.2
                 printf("Alarm (%d) Expired; Display Thread (%d) Stopped Printing Alarm Message at %d: %s.",
                        alarm->alarm_id, display->thread_id, time(NULL), alarm->message);
                 if (status != 0)
@@ -94,9 +96,11 @@ void *display_thread(void *arg) {
             } else {
                 while (alarm->time > time(NULL)) {
                     if (alarm->changed == 0) {
+                        // 3.3.4
                         printf("%s", alarm->message);
                         sleep(5);
                     } else {
+                        // 3.3.1
                         printf("Display Thread (%d) Has Started to Print Changed Message at %d: %s", display->thread_id,
                                alarm->time, alarm->message);
                         alarm->changed = 0;
