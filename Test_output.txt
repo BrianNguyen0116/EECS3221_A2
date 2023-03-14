@@ -263,3 +263,14 @@ alarm>
 /******************************* END OF: Test_output cases for 3.1 & 3.2 **************************************/
 
 /************************************* START OF: Test_output cases for 3.3 ************************************/
+// Problem: When alarms in the alarm_list expire, if there is one alarm left in the list A new display thread is created
+alarm>Start_Alarm(125): 20 This message
+ Status of mutex lock: 0
+Alarm(125) Inserted by Main Thread(2) Into Alarm List at 1678744297: 20 This message
+alarm> New Display Thread (125) Created at 1678744317
+Start_Alarm(128): 20 This message
+Status of mutex lock: 0
+Alarm(128) Inserted by Main Thread(2) Into Alarm List at 1678744301: 20 This message
+alarm> Alarm(125): Alarm Expired at 1678744317: Alarm Removed From Alarm List
+New Display Thread (128) Created at 1678744321
+Alarm(128): Alarm Expired at 1678744321: Alarm Removed From Alarm List

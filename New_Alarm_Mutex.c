@@ -20,21 +20,23 @@
  * well as added to the list in order of id.
  */
 typedef struct alarm_tag {
+
     struct alarm_tag    *link;
     time_t              time;           // seconds from EPOCH
-    int                 seconds;
+    int                 seconds;        // n seconds from the user
     int			        changed;        // boolean for change
     int                 alarm_id;       // alarm id
-    char                message[128];
+    char                message[128];   // alarm message from the user
     char                req_type[20];   // for the type of request
-
 
 } alarm_t;
 
 typedef struct display_tag {
-    struct display_tag    *link;
-    time_t   creation_time;             // Creation seconds from EPOCH
-    int   thread_id;                    // same as alarm_id
+
+    struct display_tag *link;
+    time_t              creation_time;      // Creation seconds from EPOCH
+    int                 thread_id;          // same as alarm_id
+    char                time_message[128];  // message
 
 } display_t;
 
@@ -53,12 +55,14 @@ alarm_t *globalNext;
 void *display_thread(void *arg) {
     int status;
     alarm_t *alarm;
+    display_t *display;
     /*
-    * Loop forever, processing commands. The alarm thread will
+    * Loop forever, processing commands. The display thread will
     * be disintegrated when the process exits. (From alarm_mutex.c) Similar to alarm_thread.
     */
     while (1) {
         alarm = alarm_list;
+        display = display_list;
 
         status = pthread_mutex_lock(&alarm_mutex);
         if (status != 0)
@@ -69,26 +73,41 @@ void *display_thread(void *arg) {
         if (status != 0)
             err_abort(status, "Wait on cond");
 
-        // Display message loop which lasts until expiration
-        // If-else clause to check if an alarm in order to print something else.
-        while (alarm->time > time(NULL)) {
-            if (alarm->changed == 0) {
-                printf("%s", alarm->message);
-                sleep(5);
+        // If there are no more alarms in the display thread, terminate the d. thread.
+        if (alarm == NULL) {
+            printf("Display Thread Terminated (%s) at %d", display->thread_id, time(NULL));
+            pthread_exit(NULL);
+        } else {
+
+            /*
+            * Display message loop which lasts until expiration
+                * If-else clause to check if an alarm in order to print something else.
+            * Once expiration is reached, print display thead and expiration time.
+            */
+
+            if (alarm->time <= time(NULL)) {
+                printf("Alarm (%d) Expired; Display Thread (%d) Stopped Printing Alarm Message at %d: %s.",
+                       alarm->alarm_id, display->thread_id, time(NULL), alarm->message);
+                if (status != 0)
+                    err_abort(status, "Unlock mutex");
+                free(alarm);
             } else {
-                printf("Display Thread (%d) Has Started to Print Changed Message at %d: %s", alarm->alarm_id,
-                       alarm->time, alarm->message);
-                alarm->changed = 0;
-                sleep(5);
+                while (alarm->time > time(NULL)) {
+                    if (alarm->changed == 0) {
+                        printf("%s", alarm->message);
+                        sleep(5);
+                    } else {
+                        printf("Display Thread (%d) Has Started to Print Changed Message at %d: %s", display->thread_id,
+                               alarm->time, alarm->message);
+                        alarm->changed = 0;
+                        sleep(5);
+                    }
+                }
             }
-            printf("Alarm (%d) Expired; Display Thread (%d) Stopped Printing Alarm Message at %d: %s.", alarm->alarm_id,
-                   alarm->alarm_id, time(NULL), alarm->message);
-            if (status != 0)
-                err_abort(status, "Unlock mutex");
-            free(alarm);
         }
     }
 }
+
 
 /************************* The alarm thread's start routine *************************/
 void *alarm_thread (void *arg)
@@ -100,6 +119,7 @@ void *alarm_thread (void *arg)
 
     int status;
     int sleep_time;
+    int thread_id = 1;
     /*
      * Loop forever, processing commands. The alarm thread will
      * be disintegrated when the process exits. (From alarm_mutex.c)
@@ -110,6 +130,7 @@ void *alarm_thread (void *arg)
             err_abort (status, "Lock mutex");
         alarm = alarm_list;
         display = display_list;
+
         /*
          * If the alarm list is empty, wait for one second. This
          * allows the main thread to run, and read another
@@ -134,29 +155,35 @@ void *alarm_thread (void *arg)
              * if it is. Print the creation message and add the new display
              * thread to the display list.
              */
-            if (display == NULL){
 
-                status = pthread_create(
-                        &thread, NULL, display_thread, NULL);
-                if (status != 0)
-                    err_abort(status, "Create display thread");
+            if (display == NULL) {
 
-                display = (display_t*)malloc (sizeof (display_t));
+                display = (display_t *) malloc(sizeof(display_t));
                 display->link = NULL;
-                display->thread_id = alarm->alarm_id;
-                display->creation_time = alarm->time;
+                display->thread_id = 1;
+                display->creation_time = time(NULL);
+                display_list = display;
 
-                printf("New Display Thread (%d) Created at %d \n", display->thread_id, display->creation_time);
+                status = pthread_create(&thread, NULL, display_thread, NULL);
+                if (status != 0) {
+                    err_abort(status, "Create display thread");
+                }
+
+                printf("New Display Thread (%d) Created at %d \n", thread_id, display->creation_time);
 
             } else {
-                display_list = display->link;
-                //printf("New Display Thread (%d) Created at %d", alarm->alarm_id, alarm->time);
+                alarm->changed = 1;
+                pthread_mutex_lock(&alarm_mutex);
+                pthread_cond_signal(&d_cond);
+                pthread_mutex_unlock(&alarm_mutex);
             }
+
 
 #ifdef DEBUG
             printf ("[waiting: %d(%d)\"%s\"]\n", alarm->time,
                 sleep_time, alarm->message);
 #endif
+
         }
         /*
          * Unlock the mutex before waiting, so that the main
@@ -337,9 +364,11 @@ int main (int argc, char *argv[])
 
 // Testing and Debugging
 /*
-Start_Alarm(123): 1 This message
+Start_Alarm(123): 20 This message
 Start_Alarm(125): 20 This message
 Start_Alarm(128): 20 This message
+Start_Alarm(130): 20 This message
+
 Change_Alarm(123): 20 New message
 Change_Alarm(125): 20 New message
 Start_Alarm(123): 1 This message
